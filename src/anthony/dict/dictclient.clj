@@ -19,7 +19,9 @@
   (loop [line (.readLine dict-input)
          lines []]
     (if (.startsWith line ".")
-      lines
+      (do
+        (.readLine dict-input) ; the 250 OK, irrelevant
+        lines)
       (recur (.readLine dict-input) (conj lines line)))))
 
 (defn push-command [conn-info command & args]
@@ -66,19 +68,16 @@
 
 (defn match [conn-info db strat word] (push-command conn-info "MATCH" db strat word))
 
-(defn show-dictionaries [conn-info] (push-command conn-info "SHOW DB" nil))
+(defn show-dictionaries [conn-info] (push-command conn-info "SHOW DB"))
 
-(defn show-strategies [conn-info] (push-command conn-info "SHOW STRAT" nil))
+(defn show-strategies [conn-info] (push-command conn-info "SHOW STRAT"))
 
 (defn show-info [conn-info database] (push-command conn-info "SHOW INFO" database))
 
-(defn help [conn-info] (push-command conn-info "HELP" nil))
+(defn help [conn-info] (push-command conn-info "HELP"))
 
-(defn show-server [conn-info] (push-command conn-info "SHOW SERVER" nil))
+(defn show-server [conn-info] (push-command conn-info "SHOW SERVER"))
 
-(defn status [conn-info] (push-command conn-info "STATUS" nil))
+(defn status [conn-info] (push-command conn-info "STATUS"))
 
-(defn quit [conn-info] (push-command conn-info "QUIT" nil))
-
-(let [conn-shit (connect "dict.org" 2628)]
-  (println (show-server conn-shit)))
+(defn quit [conn-info] (push-command conn-info "QUIT"))
