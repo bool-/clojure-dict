@@ -29,23 +29,16 @@
         (.close dict-sock)
         {:response response-code :reason (get-response-data line)}))))
 
-(defn client [conn-info client-info]
-  (let [dict-sock (:sock conn-info)
-        dict-input (:reader conn-info)
-        dict-output (:writer conn-info)]
-    (write-line dict-output (str "CLIENT " client-info))
-    (let [line (.readLine dict-input)
-          response-code (Integer/parseInt (get-response-code line))]
-      {:response response-code :reason (get-response-data line)}))) ; will always be 250 but w/e
+(defn action [type]
+  (fn [conn-info & args]
+    (let [{:keys [sock reader writer]} conn-info]
+      (write-line (writer (clojure.string/join " " (cons type args))))
+      (let [line (.readLine reader)
+            response-code (read-string (get-response-code line))]
+        ({:response response-code :reason (get-response-data line)})))))
 
-(defn auth [conn-info user auth-str]
-  (let [dict-sock (:sock conn-info)
-        dict-input (:reader conn-info)
-        dict-output (:writer conn-info)]
-    (write-line dict-output (str "AUTH " user " " auth-str))
-    (let [line (.readLine dict-input)
-          response-code (Integer/parseInt (get-response-code line))]
-      {:response response-code :reason (get-response-data line)})))
+(def client (action "CLIENT"))
+(def auth (action "AUTH"))
 
 (defn define [conn-info db word]
   (let [dict-sock (:sock conn-info)
