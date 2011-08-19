@@ -1,1 +1,3 @@
-This file was created by IntelliJ IDEA 10.5.1 for binding GitHub repository
+a simple DICT(rfc 2229) implementation in clojure.
+
+DO NOTE: i want to abstract some of the logic from the IO, so that will probably be done in the future.
