@@ -78,5 +78,7 @@
 
 (defn status [conn-info] (push-command conn-info "STATUS" nil))
 
+(defn quit [conn-info] (push-command conn-info "QUIT" nil))
+
 (let [conn-shit (connect "dict.org" 2628)]
   (println (show-server conn-shit)))
