@@ -15,7 +15,7 @@
 (defn get-response-data [line]
   (get (str/split line #"\s" 2) 1))
 
-(declare parse-text-block)
+(declare push-command parse-text-block)
 
 (defn connect [host port]
   (let [dict-sock (Socket. host port)
@@ -29,24 +29,6 @@
         (.close dict-sock)
         {:response response-code :reason (get-response-data line)}))))
 
-(defn client [conn-info client-info]
-  (let [dict-sock (:sock conn-info)
-        dict-input (:reader conn-info)
-        dict-output (:writer conn-info)]
-    (write-line dict-output (str "CLIENT " client-info))
-    (let [line (.readLine dict-input)
-          response-code (Integer/parseInt (get-response-code line))]
-      {:response response-code :reason (get-response-data line)}))) ; will always be 250 but w/e
-
-(defn auth [conn-info user auth-str]
-  (let [dict-sock (:sock conn-info)
-        dict-input (:reader conn-info)
-        dict-output (:writer conn-info)]
-    (write-line dict-output (str "AUTH " user " " auth-str))
-    (let [line (.readLine dict-input)
-          response-code (Integer/parseInt (get-response-code line))]
-      {:response response-code :reason (get-response-data line)})))
-
 (defn define [conn-info db word]
   (let [dict-sock (:sock conn-info)
         dict-input (:reader conn-info)
@@ -58,85 +40,24 @@
         {:definition-info (get-response-data (.readLine dict-input)) :definition (str/join "\r\n" (parse-text-block dict-input))}
         {:response response-code :reason (get-response-data line)}))))
 
-(defn match [conn-info db strat word]
-  (let [dict-sock (:sock conn-info)
-        dict-input (:reader conn-info)
-        dict-output (:writer conn-info)]
-    (write-line dict-output (str "MATCH " db " " strat " " word))
-    (let [line (.readLine dict-input)
-          response-code (Integer/parseInt (get-response-code line))]
-      (if (== response-code 152) ; got definition
-        (str/join "\r\n" (parse-text-block dict-input))
-        {:response response-code :reason (get-response-data line)}))))
+(defn client [conn-info client-info] (push-command conn-info "CLIENT" client-info))
 
-(defn show-dictionaries [conn-info]
-  (let [dict-sock (:sock conn-info)
-        dict-input (:reader conn-info)
-        dict-output (:writer conn-info)]
-    (write-line dict-output "SHOW DB")
-    (let [line (.readLine dict-input)
-          response-code (Integer/parseInt (get-response-code line))]
-      (if (== response-code 110)
-        (parse-text-block dict-input)
-        (do
-          {:response response-code :reason (get-response-data line)})))))
+(defn auth [conn-info user auth-str] (push-command conn-info "AUTH" user auth-str))
 
-(defn show-strategies [conn-info]
-  (let [dict-sock (:sock conn-info)
-        dict-input (:reader conn-info)
-        dict-output (:writer conn-info)]
-    (write-line dict-output "SHOW STRAT")
-    (let [line (.readLine dict-input)
-          response-code (Integer/parseInt (get-response-code line))]
-      (if (== response-code 111)
-        (parse-text-block dict-input)
-        (do
-          {:response response-code :reason (get-response-data line)})))))
+(defn match [conn-info db strat word] (push-command conn-info "MATCH" db strat word))
 
-(defn show-info [conn-info database]
-  (let [dict-sock (:sock conn-info)
-        dict-input (:reader conn-info)
-        dict-output (:writer conn-info)]
-    (write-line dict-output (str "SHOW INFO " database))
-    (let [line (.readLine dict-input)
-          response-code (Integer/parseInt (get-response-code line))]
-      (if (== response-code 112)
-        (str/join "\r\n" (parse-text-block dict-input))
-        (do
-          {:response response-code :reason (get-response-data line)})))))
+(defn show-dictionaries [conn-info] (push-command conn-info "SHOW DB" nil))
 
-(defn help [conn-info]
-  (let [dict-sock (:sock conn-info)
-        dict-input (:reader conn-info)
-        dict-output (:writer conn-info)]
-    (write-line dict-output "HELP")
-    (let [line (.readLine dict-input)
-          response-code (Integer/parseInt (get-response-code line))]
-      (if (== response-code 113)
-        (str/join "\r\n" (parse-text-block dict-input))
-        (do
-          {:response response-code :reason (get-response-data line)})))))
+(defn show-strategies [conn-info] (push-command conn-info "SHOW STRAT" nil))
 
-(defn show-server [conn-info]
-  (let [dict-sock (:sock conn-info)
-        dict-input (:reader conn-info)
-        dict-output (:writer conn-info)]
-    (write-line dict-output "SHOW SERVER")
-    (let [line (.readLine dict-input)
-          response-code (Integer/parseInt (get-response-code line))]
-      (if (== response-code 114)
-        (str/join "\r\n" (parse-text-block dict-input))
-        (do
-          {:response response-code :reason (get-response-data line)})))))
+(defn show-info [conn-info database] (push-command conn-info "SHOW INFO" database))
 
-(defn status [conn-info]
-  (let [dict-sock (:sock conn-info)
-        dict-input (:reader conn-info)
-        dict-output (:writer conn-info)]
-    (write-line dict-output "STATUS")
-    (let [line (.readLine dict-input)
-          response-code (Integer/parseInt (get-response-code line))]
-      {:response response-code :reason (get-response-data line)})))
+(defn help [conn-info] (push-command conn-info "HELP" nil))
+
+(defn show-server [conn-info] (push-command conn-info "SHOW SERVER" nil))
+
+(defn status [conn-info] (push-command conn-info "STATUS" nil))
+
 
 (defn parse-text-block [dict-input]
   (loop [line (.readLine dict-input)
@@ -145,6 +66,20 @@
       lines
       (recur (.readLine dict-input) (conj lines line)))))
 
+(defn push-command [conn-info command & args]
+  (let [dict-sock (:sock conn-info)
+        dict-input (:reader conn-info)
+        dict-output (:writer conn-info)]
+    (write-line dict-output (str/join " " (cons command args)))
+    (let [line (.readLine dict-input)
+          response-code (Integer/parseInt (get-response-code line))
+          text-responses [114 113 112 111 110 152]
+          join-responses [114 113 112 152]]
+      (if (some #{response-code} text-responses)
+        (if (some #{response-code} join-responses)
+          (str/join "\r\n" (parse-text-block dict-input))
+          (parse-text-block dict-input))
+        {:response response-code :reason (get-response-data line)}))))
 
 (let [conn-shit (connect "dict.org" 2628)]
-  (println (match conn-shit "wn" "exact" "ice")))
+  (println (show-server conn-shit)))
